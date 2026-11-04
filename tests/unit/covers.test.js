@@ -133,7 +133,12 @@ describe('findCovers in loose mode (manual picker)', () => {
   test('also offers covers of other editions/translations, matching titles first', async () => {
     const fetchFn = route({
       'openlibrary.org': () =>
-        json({ docs: [{ title: 'Cien años de soledad', cover_i: 7 }, { title: 'Cem anos de solidão', cover_i: 8 }] }),
+        json({
+          docs: [
+            { title: 'Cien años de soledad', cover_i: 7 },
+            { title: 'Cem anos de solidão', cover_i: 8 },
+          ],
+        }),
       googleapis: () => json({}),
     });
     const book = { title: 'Cem Anos de Solidão', author: 'Gabriel García Márquez' };
