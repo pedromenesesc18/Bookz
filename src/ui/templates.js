@@ -29,9 +29,9 @@ export const progressHtml = (book) => {
 
 export const tagHtml = (text) => `<span class="tag">${escapeHtml(text)}</span>`;
 
-export const bookCard = (book, extra = '') =>
+export const bookCard = (book, extra = '', cover = coverHtml(book)) =>
   `<li><button class="book" type="button" data-action="edit" data-id="${escapeHtml(book.id)}">
-    ${coverHtml(book)}
+    ${cover}
     <span class="book-info">
       <span class="book-title">${escapeHtml(book.title)}</span>
       <span class="book-author">${escapeHtml(book.author)}</span>
@@ -39,8 +39,8 @@ export const bookCard = (book, extra = '') =>
     </span>
   </button></li>`;
 
-export const bookList = (books, extraFor = () => '') =>
-  `<ul class="list">${books.map((b) => bookCard(b, extraFor(b))).join('')}</ul>`;
+export const bookList = (books, extraFor = () => '', coverFor = coverHtml) =>
+  `<ul class="list">${books.map((b) => bookCard(b, extraFor(b), coverFor(b))).join('')}</ul>`;
 
 export const emptyState = (icon, message) =>
   `<div class="empty"><div class="empty-icon" aria-hidden="true">${icon}</div><p>${message}</p></div>`;

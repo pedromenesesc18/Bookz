@@ -126,3 +126,16 @@ describe('setCover', () => {
     expect(storage.saveBooks).not.toHaveBeenCalled();
   });
 });
+
+describe('lastShelved (arrival animation)', () => {
+  test('is set for new books and for books just finished, cleared otherwise', () => {
+    const old = makeBook({ id: 'o1', title: 'Velho', status: 'lendo' });
+    const { store, actions } = setup([old]);
+    const added = actions.saveBook({ title: 'Novo', status: 'quero' });
+    expect(store.getState().lastShelved).toBe(added.id);
+    actions.saveBook({ ...old, notes: 'nota' });
+    expect(store.getState().lastShelved).toBeNull();
+    actions.saveBook({ ...old, status: 'lido', finishedAt: '2024-01-01' });
+    expect(store.getState().lastShelved).toBe('o1');
+  });
+});

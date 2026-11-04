@@ -54,10 +54,10 @@ test('shows data saved by the previous version', async ({ page }) => {
   await seed(page, LEGACY);
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Bookz' })).toBeVisible();
-  await expect(page.getByText('Dom Casmurro')).toBeVisible();
+  await expect(page.locator('.list').getByText('Dom Casmurro')).toBeVisible();
   await expect(page.getByRole('tab', { name: '2024' })).toHaveAttribute('aria-selected', 'true');
   await page.getByRole('button', { name: 'Lendo' }).click();
-  await expect(page.getByText('Torto Arado')).toBeVisible();
+  await expect(page.locator('.book-title', { hasText: 'Torto Arado' })).toBeVisible();
 });
 
 test('add a book from search, rate it and find it in Lidos', async ({ page }) => {
@@ -118,7 +118,10 @@ test('track reading progress, then finish the book', async ({ page }) => {
 test('delete with undo', async ({ page }) => {
   await seed(page, LEGACY);
   await page.goto('/');
-  await page.getByRole('button', { name: /Dom Casmurro/ }).click();
+  await page
+    .locator('.list')
+    .getByRole('button', { name: /Dom Casmurro/ })
+    .click();
   await page.getByRole('button', { name: 'Remover livro' }).click();
   await expect(page.getByRole('main')).not.toContainText('Dom Casmurro');
   await page.getByRole('button', { name: 'Desfazer' }).click();
@@ -205,13 +208,66 @@ test('covers: filled automatically and can be changed by hand', async ({ page })
   await seed(page, [{ id: 'a1', title: 'Dom Casmurro', status: 'lido', finishedAt: '2024-03-05' }]);
   await page.goto('/');
 
-  const cover = page.locator('.book img[data-cover]');
+  const cover = page.locator('.list .book img[data-cover]');
   await expect(cover).toHaveAttribute('src', 'https://covers.openlibrary.org/b/id/1-M.jpg');
   await expect.poll(() => cover.evaluate((img) => img.naturalWidth)).toBeGreaterThan(0);
 
-  await page.getByRole('button', { name: /Dom Casmurro/ }).click();
+  await page
+    .locator('.list')
+    .getByRole('button', { name: /Dom Casmurro/ })
+    .click();
   await page.getByRole('button', { name: 'Escolher capa' }).click();
   await page.getByRole('button', { name: 'Capa 2' }).click();
   await page.getByRole('button', { name: 'Salvar' }).click();
   await expect(cover).toHaveAttribute('src', 'https://covers.openlibrary.org/b/id/2-M.jpg');
+});
+
+test('shelves: year shelf, desk book with ribbon and the wall', async ({ page }) => {
+  await seed(page, LEGACY);
+  await page.goto('/');
+  const yearShelf = page.getByRole('region', { name: 'Prateleira de 2024' });
+  await expect(yearShelf.getByRole('button', { name: 'Dom Casmurro' })).toBeVisible();
+  await yearShelf.getByRole('button', { name: 'Dom Casmurro' }).click();
+  await expect(page.getByRole('heading', { name: 'Editar livro' })).toBeVisible();
+  await page.keyboard.press('Escape');
+
+  await page.getByRole('button', { name: 'Lendo' }).click();
+  await expect(page.locator('.desk-book .ribbon')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Estante' }).click();
+  await expect(page.locator('.shelf-wall .spine')).toHaveCount(0);
+});
+
+test('finishing a book drops it onto the year shelf', async ({ page }) => {
+  await seed(page, LEGACY);
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Lendo' }).click();
+  await page.getByRole('button', { name: /Torto Arado/ }).click();
+  await page.getByRole('radio', { name: 'Lido' }).click();
+  await page.getByLabel('Terminei em').fill('2024-06-10');
+  await page.getByRole('button', { name: 'Salvar' }).click();
+  await page.getByRole('button', { name: 'Lidos' }).click();
+  await expect(page.locator('.shelf .spine.arrive')).toHaveAttribute('data-id', 'a2');
+  await expect(page.locator('.shelf .spine.arrive')).toHaveCount(0, { timeout: 3000 });
+});
+
+test('the wall wraps onto more shelves without overflowing', async ({ page }) => {
+  const many = Array.from({ length: 30 }, (_, i) => ({
+    id: `w${i}`,
+    title: `Livro ${i}`,
+    status: 'quero',
+    fisico: true,
+    pages: String(100 + i * 25),
+  }));
+  await seed(page, many);
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Estante' }).click();
+  const tops = await page
+    .locator('.shelf-slot')
+    .evaluateAll((els) => [...new Set(els.map((e) => e.offsetTop))]);
+  expect(tops.length).toBeGreaterThan(1);
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > window.innerWidth,
+  );
+  expect(overflow).toBe(false);
 });

@@ -32,12 +32,15 @@ export const createActions = ({ store, storage, notify, today = todayISO }) => {
     const book = finalizeDraft(draft, today());
     if (!book) return null;
     const { books, tab } = store.getState();
-    const isNew = !books.some((b) => b.id === book.id);
+    const previous = books.find((b) => b.id === book.id);
+    const isNew = !previous;
+    // New books and books just finished slide onto the shelf.
+    const arrived = isNew || (book.status === STATUS.READ && previous.status !== STATUS.READ);
     const year =
       book.status === STATUS.READ && book.finishedAt
         ? book.finishedAt.slice(0, 4)
         : store.getState().year;
-    setBooks(upsertBook(books, book), { year });
+    setBooks(upsertBook(books, book), { year, lastShelved: arrived ? book.id : null });
     if (isNew) setTab(tabAfterAdd(tab, book));
     notify(isNew ? 'Livro adicionado ✨' : 'Salvo');
     return book;

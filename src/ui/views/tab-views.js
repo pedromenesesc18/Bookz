@@ -9,9 +9,10 @@ import {
   statTiles,
   tagHtml,
 } from '../templates.js';
+import { deskBookHtml, shelfWallHtml } from '../shelf.js';
 
-const listOrEmpty = (books, query, empty, extraFor) => {
-  if (books.length) return bookList(books, extraFor);
+const listOrEmpty = (books, query, empty, extraFor, coverFor) => {
+  if (books.length) return bookList(books, extraFor, coverFor);
   return query.trim() ? noResults(query) : empty;
 };
 
@@ -23,6 +24,7 @@ export const renderReadingView = ({ books, query }) =>
     (b) =>
       progressHtml(b) ||
       (b.startedAt ? `<span class="meta">desde ${formatDayMonth(b.startedAt)}</span>` : ''),
+    deskBookHtml,
   );
 
 export const renderWantView = ({ books, query }) => {
@@ -36,7 +38,7 @@ export const renderWantView = ({ books, query }) => {
   );
 };
 
-export const renderShelfView = ({ books, query }) => {
+export const renderShelfView = ({ books, query, lastShelved = null }) => {
   const { unread, read, total } = shelfSummary(books);
   if (!total) {
     return emptyState(
@@ -50,8 +52,12 @@ export const renderShelfView = ({ books, query }) => {
     { value: total, label: 'na estante' },
   ]);
   const empty = emptyState('🎉', 'Você já leu todos os livros da estante!');
+  const unreadBooks = shelfBooks(books, '');
+  // The wall is the whole shelf; while searching only the filtered list is shown.
+  const wall = query.trim() || !unreadBooks.length ? '' : shelfWallHtml(unreadBooks, lastShelved);
   return (
     stats +
+    wall +
     listOrEmpty(shelfBooks(books, query), query, empty, (b) =>
       b.status === 'lendo' ? tagHtml('lendo agora') : '',
     )

@@ -118,3 +118,45 @@ describe('other tabs', () => {
     expect(html(state([], { tab: 'x' })).textContent).toContain('Nenhum livro lido');
   });
 });
+
+describe('shelves in the tabs', () => {
+  const books = [
+    makeBook({ id: 'l1', title: 'Lido A', status: 'lido', finishedAt: '2024-02-01', fisico: true }),
+    makeBook({ id: 'l2', title: 'Lido B', status: 'lido', finishedAt: '2024-05-01' }),
+    makeBook({
+      id: 'r1',
+      title: 'Lendo',
+      status: 'lendo',
+      fisico: true,
+      pages: 100,
+      currentPage: 40,
+    }),
+    makeBook({ id: 'q1', title: 'Quero', status: 'quero', fisico: true }),
+  ];
+
+  test('Lidos shows the year shelf with every book of the year, hidden while searching', () => {
+    expect(html(state(books, { query: 'Lido A' })).querySelector('.shelf')).toBeNull();
+    const el = html(state(books, { lastShelved: 'l2' }));
+    expect(el.querySelector('.shelf-label').textContent).toBe('Prateleira de 2024 · 2 lidos');
+    expect(el.querySelectorAll('.shelf .spine')).toHaveLength(2);
+    expect(el.querySelector('.spine.arrive').dataset.id).toBe('l2');
+  });
+
+  test('Lendo shows tilted books with a ribbon', () => {
+    const el = html(state(books, { tab: 'lendo' }));
+    expect(el.querySelector('.desk-book .ribbon').getAttribute('style')).toBe('--progress:40%');
+    expect(el.querySelector('.cover')).toBeNull();
+  });
+
+  test('Estante shows the wall with the reading book pulled out, hidden while searching', () => {
+    const el = html(state(books, { tab: 'estante' }));
+    expect([...el.querySelectorAll('.shelf-wall .spine')].map((s) => s.dataset.id)).toEqual([
+      'r1',
+      'q1',
+    ]);
+    expect(el.querySelector('.spine.out').dataset.id).toBe('r1');
+    expect(
+      html(state(books, { tab: 'estante', query: 'quero' })).querySelector('.shelf-wall'),
+    ).toBeNull();
+  });
+});

@@ -1,6 +1,7 @@
 import { NO_DATE, readByMonth, readYears, yearStats } from '../../domain/library.js';
 import { monthName } from '../../lib/dates.js';
 import { escapeHtml } from '../../lib/text.js';
+import { yearShelfHtml } from '../shelf.js';
 import { bookList, countBooks, emptyState, noResults, statTiles } from '../templates.js';
 
 const yearLabel = (y) => (y === NO_DATE ? 'Sem data' : y);
@@ -35,7 +36,7 @@ export const resolveYear = (books, year) => {
   return years.includes(year) ? year : (years[0] ?? null);
 };
 
-export const renderReadView = ({ books, year, query }) => {
+export const renderReadView = ({ books, year, query, lastShelved = null }) => {
   const years = readYears(books);
   if (!years.length)
     return emptyState('✨', 'Nenhum livro lido ainda.<br>Toque no + pra adicionar o primeiro.');
@@ -43,5 +44,13 @@ export const renderReadView = ({ books, year, query }) => {
   const groups = readByMonth(books, current, query);
   const all = groups.flatMap((g) => g.books);
   const body = all.length ? groups.map(monthSection).join('') : noResults(query);
-  return yearChips(years, current) + statsFor(all) + body;
+  // Like the Estante wall, the shelf steps aside while searching.
+  const shelf = query.trim()
+    ? ''
+    : yearShelfHtml(
+        readByMonth(books, current, '').flatMap((g) => g.books),
+        current,
+        lastShelved,
+      );
+  return yearChips(years, current) + shelf + statsFor(all) + body;
 };

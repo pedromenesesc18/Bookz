@@ -38,13 +38,27 @@ const initialState = (storage) => {
     year: null,
     query: '',
     searchOpen: false,
+    lastShelved: null,
   };
 };
 
+// Longer than the spine arrival animation (--duration-slow in shelf.css), so it can finish.
+const ARRIVE_MS = 1400;
+
+/** Shelves scroll sideways: keep the newest (rightmost) book and any arriving one in view. */
+const showNewestOnShelf = (view) => {
+  view.querySelectorAll('.shelf-row').forEach((row) => {
+    row.scrollLeft = row.scrollWidth;
+  });
+  view.querySelector('.spine.arrive')?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
+};
+
 const createRenderer =
-  (dom, doc) =>
+  (dom, doc, colorizer) =>
   (state, prev = {}) => {
     dom.view.innerHTML = renderTab({ ...state, year: resolveYear(state.books, state.year) });
+    colorizer?.apply(dom.view);
+    showNewestOnShelf(dom.view);
     dom.view.dataset.tab = state.tab;
     dom.nav.innerHTML = navHtml(state.tab);
     dom.searchBar.hidden = !state.searchOpen;
@@ -160,6 +174,7 @@ export const mountApp = ({
   storage,
   search,
   covers,
+  colorizer,
   today = todayISO,
   now = () => new Date(),
 }) => {
@@ -180,8 +195,13 @@ export const mountApp = ({
   const flows = createFlows({ ctx, search, covers, today, now });
 
   bindEvents(ctx, flows);
-  const render = createRenderer(dom, doc);
+  const render = createRenderer(dom, doc, colorizer);
   store.subscribe(render);
+  store.subscribe((state, prev) => {
+    if (state.lastShelved && state.lastShelved !== prev.lastShelved) {
+      setTimeout(() => store.update({ lastShelved: null }), ARRIVE_MS);
+    }
+  });
   render(store.getState());
   filler?.start();
   return { ...ctx, ...flows };

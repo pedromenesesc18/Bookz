@@ -200,3 +200,24 @@ describe('cover set while the form is open', () => {
     expect(JSON.parse(backend.getItem(BOOKS_KEY))[0].cover).toBe('https://c/bg.jpg');
   });
 });
+
+describe('shelf integration', () => {
+  test('clears the arrival mark after the animation and colors spines', async () => {
+    vi.useFakeTimers();
+    const colorizer = { apply: vi.fn(async () => {}) };
+    backend.setItem(BOOKS_KEY, '[]');
+    const app = mountApp({
+      storage: createStorage(backend),
+      search: vi.fn(),
+      colorizer,
+      today: () => '2024-06-01',
+    });
+    app.actions.saveBook({ title: 'Lido', status: 'lido', finishedAt: '2024-05-05' });
+    expect($('.spine.arrive')).not.toBeNull();
+    expect(colorizer.apply).toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(app.store.getState().lastShelved).toBeNull();
+    expect($('.spine.arrive')).toBeNull();
+    vi.useRealTimers();
+  });
+});
