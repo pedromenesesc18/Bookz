@@ -17,3 +17,8 @@ describe('service worker precache', () => {
     expect(missing).toEqual([]);
   });
 });
+
+test('precaches the barcode reader so scanning works offline on iPhone', () => {
+  const sw = readFileSync(join(ROOT, 'sw.js'), 'utf8');
+  expect(sw).toContain("'./vendor/zxing/zxing.min.js'");
+});
