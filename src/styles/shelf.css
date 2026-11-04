@@ -1,0 +1,205 @@
+/* Prateleiras: lombadas de tecido sobre tábuas de madeira. */
+:root {
+  --color-wood: #9a6d45;
+  --color-wood-edge: #7a5233;
+  --color-shelf-back: #efe3d4;
+  --color-spine-ink: #fbf3e8;
+  --shelf-slot: 124px;
+  --shelf-board: 10px;
+  --duration-slow: 700ms;
+  --ease-back: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-wood: #6e4f36;
+    --color-wood-edge: #4f3826;
+    --color-shelf-back: #241d18;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-slow: 0ms;
+  }
+}
+
+/* ---------- lombada ---------- */
+.spine {
+  position: relative;
+  flex: none;
+  width: var(--w);
+  height: var(--h);
+  padding: 8px 0;
+  border-radius: 2px 2px 1px 1px;
+  color: var(--color-spine-ink);
+  background:
+    /* faixas douradas perto do topo e da base */
+    linear-gradient(to bottom, transparent 7px, rgb(240 200 120 / 0.55) 7px 8px, transparent 8px),
+    linear-gradient(to top, transparent 7px, rgb(240 200 120 / 0.55) 7px 8px, transparent 8px),
+    /* volume da lombada */
+    linear-gradient(
+        90deg,
+        rgb(0 0 0 / 0.28),
+        rgb(255 255 255 / 0.1) 35%,
+        rgb(0 0 0 / 0.08) 70%,
+        rgb(0 0 0 / 0.32)
+      ),
+    var(--spine);
+  box-shadow: 1px 0 0 rgb(0 0 0 / 0.18);
+  display: flex;
+  justify-content: center;
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+
+.spine-title {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font: 600 11px/1 var(--font-body);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-height: 100%;
+}
+
+.spine:hover {
+  transform: translateY(-4px);
+}
+
+.spine:active {
+  transform: translateY(-8px);
+}
+
+/* Livro que acabou de chegar: cai e se encaixa na prateleira */
+.spine.arrive {
+  animation: spine-arrive var(--duration-slow) var(--ease-back) both;
+}
+
+@keyframes spine-arrive {
+  from {
+    opacity: 0;
+    transform: translateY(-48px) rotate(-10deg);
+  }
+  60% {
+    opacity: 1;
+  }
+}
+
+/* Lendo agora: um pouco para fora da estante */
+.spine.out {
+  transform: translateY(-10px) rotate(-3deg);
+  box-shadow: 3px 6px 10px rgb(0 0 0 / 0.25);
+  z-index: 1;
+}
+
+/* ---------- prateleira do ano (Lidos) ---------- */
+.shelf {
+  margin: var(--space-1) 0 var(--space-4);
+}
+
+.shelf-label {
+  margin: 0 2px var(--space-2);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.shelf-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  min-height: var(--shelf-slot);
+  padding: var(--space-3) var(--space-3) 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  background: var(--color-shelf-back);
+  border-bottom: var(--shelf-board) solid var(--color-wood);
+  box-shadow: 0 6px 10px -6px rgb(60 40 20 / 0.45);
+}
+
+.shelf-row::-webkit-scrollbar {
+  display: none;
+}
+
+/* ---------- parede de prateleiras (Estante) ---------- */
+.shelf-wall {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  column-gap: 2px;
+  padding: 0 var(--space-3);
+  margin: 0 0 var(--space-5);
+  border-radius: var(--radius-sm);
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      transparent 0 var(--shelf-slot),
+      var(--color-wood) var(--shelf-slot) calc(var(--shelf-slot) + var(--shelf-board) - 2px),
+      var(--color-wood-edge) calc(var(--shelf-slot) + var(--shelf-board) - 2px)
+        calc(var(--shelf-slot) + var(--shelf-board))
+    ),
+    var(--color-shelf-back);
+}
+
+.shelf-slot {
+  height: calc(var(--shelf-slot) + var(--shelf-board));
+  padding-bottom: var(--shelf-board);
+  display: flex;
+  align-items: flex-end;
+}
+
+/* ---------- livro na mesa (Lendo) ---------- */
+.desk-book {
+  position: relative;
+  flex: none;
+  width: 58px;
+  height: 84px;
+  margin: 8px 6px 4px 2px;
+  transform: rotate(-5deg);
+  border-radius: 3px 6px 6px 3px;
+  box-shadow: var(--shadow-cover);
+}
+
+.desk-book img,
+.desk-front {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  object-fit: cover;
+}
+
+.desk-front {
+  display: flex;
+  align-items: flex-end;
+  padding: 6px;
+  overflow: hidden;
+  color: var(--color-spine-ink);
+  font: 700 10px/1.15 var(--font-display);
+  background: linear-gradient(90deg, rgb(0 0 0 / 0.25), transparent 12%), var(--spine);
+}
+
+/* Fita de marcador: desce até a profundidade da leitura */
+.ribbon {
+  position: absolute;
+  top: -7px;
+  right: 9px;
+  z-index: 1;
+  width: 8px;
+  height: max(14px, calc(7px + var(--progress)));
+  background: var(--color-accent);
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% calc(100% - 5px), 0 100%);
+  transform-origin: top;
+  animation: ribbon-drop var(--duration-slow) var(--ease-out) both;
+}
+
+@keyframes ribbon-drop {
+  from {
+    transform: scaleY(0.2);
+  }
+}
