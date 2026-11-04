@@ -52,18 +52,26 @@ const sanitize = (items) =>
     .filter(Boolean)
     .map(({ title, author, pages, cover }) => ({ title, author, pages, cover }));
 
-const SOURCES = [
-  {
-    url: (q) =>
-      `${GOOGLE_URL}?maxResults=${MAX_RESULTS}&printType=books&q=${encodeURIComponent(buildGoogleQuery(q))}`,
-    pick: (json) => (Array.isArray(json?.items) ? json.items.map(mapGoogleVolume) : []),
-  },
-  {
-    url: (q) =>
-      `${OPEN_LIBRARY_URL}?limit=${MAX_RESULTS}&fields=${OPEN_LIBRARY_FIELDS}&q=${encodeURIComponent(q)}`,
-    pick: (json) => (Array.isArray(json?.docs) ? json.docs.map(mapOpenLibraryDoc) : []),
-  },
-];
+export const GOOGLE = {
+  url: (q) =>
+    `${GOOGLE_URL}?maxResults=${MAX_RESULTS}&printType=books&q=${encodeURIComponent(buildGoogleQuery(q))}`,
+  pick: (json) => (Array.isArray(json?.items) ? json.items.map(mapGoogleVolume) : []),
+};
+
+export const OPEN_LIBRARY = {
+  url: (q) =>
+    `${OPEN_LIBRARY_URL}?limit=${MAX_RESULTS}&fields=${OPEN_LIBRARY_FIELDS}&q=${encodeURIComponent(q)}`,
+  pick: (json) => (Array.isArray(json?.docs) ? json.docs.map(mapOpenLibraryDoc) : []),
+};
+
+const SOURCES = [GOOGLE, OPEN_LIBRARY];
+
+/** Queries one source; throws on network/HTTP errors. Results are sanitized. */
+export const querySource = async (
+  source,
+  query,
+  { fetchFn = globalThis.fetch, timeoutMs = DEFAULT_TIMEOUT_MS } = {},
+) => sanitize(source.pick(await fetchJson(source.url(query), fetchFn, timeoutMs)));
 
 /**
  * Searches Google Books, falling back to Open Library.
@@ -79,7 +87,7 @@ export const searchBooks = async (
   let errors = 0;
   for (const source of SOURCES) {
     try {
-      const items = sanitize(source.pick(await fetchJson(source.url(query), fetchFn, timeoutMs)));
+      const items = await querySource(source, query, { fetchFn, timeoutMs });
       if (items.length) return { items, failed: false };
     } catch {
       errors += 1;

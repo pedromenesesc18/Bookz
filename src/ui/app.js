@@ -1,10 +1,12 @@
 import { createStore } from '../state/store.js';
 import { createActions } from '../state/actions.js';
+import { createCoverFiller } from '../state/cover-filler.js';
 import { newDraft } from '../domain/draft.js';
 import { backupFileName, serializeBackup } from '../data/backup.js';
 import { todayISO } from '../lib/dates.js';
 import { escapeHtml } from '../lib/text.js';
 import { readFileText } from '../lib/files.js';
+import { createId } from '../lib/id.js';
 import { ICONS } from './icons.js';
 import { createSheet } from './sheet.js';
 import { createToast } from './toast.js';
@@ -53,22 +55,35 @@ const createRenderer =
     if (prev.tab && state.tab !== prev.tab) doc.defaultView?.scrollTo?.(0, 0);
   };
 
-/** Sheet flows: add (search) → edit form, backup menu. */
-const createFlows = ({ ctx, search, today, now }) => {
-  const { store, actions, sheet, toast, dom, doc } = ctx;
-
-  const openEdit = (draft, isNew) =>
+/** Edit form flow. A cover removed by hand is never filled in again automatically. */
+const createOpenEdit =
+  ({ store, actions, sheet, filler }, covers, today) =>
+  (draft, isNew) =>
     openEditSheet({
       sheet,
       draft,
       isNew,
       today: today(),
-      onSave: (d) => actions.saveBook(d) && sheet.close(),
+      findCovers: covers?.findCovers,
+      onSave: (d, { coverChosen, coverCleared } = {}) => {
+        // Picker not used: keep the cover as it is now (the background job may have set one).
+        const current = store.getState().books.find((b) => b.id === d.id);
+        const latest = !coverChosen && current ? { ...d, cover: current.cover } : d;
+        const withId = latest.id ? latest : { ...latest, id: createId() };
+        // Mark before saving: the save itself wakes the cover filler.
+        if (coverCleared) filler?.markTried(withId.id);
+        if (actions.saveBook(withId)) sheet.close();
+      },
       onDelete: (id) => {
         sheet.close();
         actions.deleteBook(id);
       },
     });
+
+/** Sheet flows: add (search) → edit form, backup menu. */
+const createFlows = ({ ctx, search, covers, today, now }) => {
+  const { store, actions, sheet, toast, dom, doc } = ctx;
+  const openEdit = createOpenEdit(ctx, covers, today);
 
   const exportBackup = () => {
     const data = serializeBackup(store.getState().books, now());
@@ -144,6 +159,7 @@ export const mountApp = ({
   doc = document,
   storage,
   search,
+  covers,
   today = todayISO,
   now = () => new Date(),
 }) => {
@@ -157,12 +173,16 @@ export const mountApp = ({
     doc,
   });
   const actions = createActions({ store, storage, today, notify: toast.show });
-  const ctx = { store, actions, sheet, toast, dom, doc };
-  const flows = createFlows({ ctx, search, today, now });
+  const filler =
+    covers &&
+    createCoverFiller({ store, storage, findCover: covers.findCover, setCover: actions.setCover });
+  const ctx = { store, actions, sheet, toast, dom, doc, filler };
+  const flows = createFlows({ ctx, search, covers, today, now });
 
   bindEvents(ctx, flows);
   const render = createRenderer(dom, doc);
   store.subscribe(render);
   render(store.getState());
+  filler?.start();
   return { ...ctx, ...flows };
 };

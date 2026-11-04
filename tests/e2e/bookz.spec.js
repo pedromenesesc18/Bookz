@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { test, expect } from '@playwright/test';
 
 const LEGACY = [
@@ -37,6 +38,9 @@ const mockSearch = (page, items) =>
   );
 
 test.beforeEach(async ({ page }) => {
+  // Default: cover sources answer with nothing, so tests never hit the real network.
+  await page.route('https://openlibrary.org/**', (r) => r.fulfill({ json: { docs: [] } }));
+  await page.route('https://www.googleapis.com/**', (r) => r.fulfill({ json: {} }));
   // Fonts and covers are not needed for behaviour tests.
   await page.route('https://fonts.googleapis.com/**', (r) =>
     r.fulfill({ body: '', contentType: 'text/css' }),
@@ -181,4 +185,33 @@ test('no horizontal overflow at small widths', async ({ page }) => {
     () => document.documentElement.scrollWidth > window.innerWidth,
   );
   expect(overflow).toBe(false);
+});
+
+test('covers: filled automatically and can be changed by hand', async ({ page }) => {
+  const png = readFileSync(new URL('../../icons/icon-192.png', import.meta.url));
+  await page.route('https://covers.openlibrary.org/**', (r) =>
+    r.fulfill({ body: png, contentType: 'image/png' }),
+  );
+  await page.route('https://openlibrary.org/**', (r) =>
+    r.fulfill({
+      json: {
+        docs: [
+          { title: 'Dom Casmurro', cover_i: 1 },
+          { title: 'Dom Casmurro', cover_i: 2 },
+        ],
+      },
+    }),
+  );
+  await seed(page, [{ id: 'a1', title: 'Dom Casmurro', status: 'lido', finishedAt: '2024-03-05' }]);
+  await page.goto('/');
+
+  const cover = page.locator('.book img[data-cover]');
+  await expect(cover).toHaveAttribute('src', 'https://covers.openlibrary.org/b/id/1-M.jpg');
+  await expect.poll(() => cover.evaluate((img) => img.naturalWidth)).toBeGreaterThan(0);
+
+  await page.getByRole('button', { name: /Dom Casmurro/ }).click();
+  await page.getByRole('button', { name: 'Escolher capa' }).click();
+  await page.getByRole('button', { name: 'Capa 2' }).click();
+  await page.getByRole('button', { name: 'Salvar' }).click();
+  await expect(cover).toHaveAttribute('src', 'https://covers.openlibrary.org/b/id/2-M.jpg');
 });

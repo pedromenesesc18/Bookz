@@ -125,3 +125,78 @@ describe('mountApp', () => {
     expect($('img[data-cover]')).toBeNull();
   });
 });
+
+describe('covers', () => {
+  const mountWithCovers = (books, covers) => {
+    backend.setItem(BOOKS_KEY, JSON.stringify(books));
+    return mountApp({
+      storage: createStorage(backend),
+      search: vi.fn(async () => ({ items: [], failed: false })),
+      covers,
+      today: () => '2024-06-01',
+    });
+  };
+
+  test('books without a cover get one automatically and it is saved', async () => {
+    const covers = {
+      findCover: vi.fn(async () => ({ cover: 'https://c/auto.jpg', failed: false })),
+      findCovers: vi.fn(),
+    };
+    mountWithCovers([{ id: 'a', title: 'Sem Capa', status: 'quero' }], covers);
+    $('#nav [data-tab="quero"]').click();
+    await vi.waitFor(() =>
+      expect($('#view img[data-cover]')?.getAttribute('src')).toBe('https://c/auto.jpg'),
+    );
+    expect(JSON.parse(backend.getItem(BOOKS_KEY))[0].cover).toBe('https://c/auto.jpg');
+  });
+
+  test('a cover removed by hand is not filled in again', async () => {
+    const covers = {
+      findCover: vi.fn(async () => ({ cover: 'https://c/auto.jpg', failed: false })),
+      findCovers: vi.fn(async () => ({ covers: ['https://c/1.jpg'], failed: false })),
+    };
+    const app = mountWithCovers(
+      [{ id: 'a', title: 'Com Capa', status: 'quero', cover: 'https://c/old.jpg' }],
+      covers,
+    );
+    $('#nav [data-tab="quero"]').click();
+    $('.book[data-id="a"]').click();
+    $('[data-action="pick-cover"]').click();
+    await vi.waitFor(() => expect($('[data-cover-choice="none"]')).not.toBeNull());
+    $('[data-cover-choice="none"]').click();
+    $('#book-form').requestSubmit();
+    await app.filler.run();
+    expect(covers.findCover).not.toHaveBeenCalled();
+    expect(JSON.parse(backend.getItem(BOOKS_KEY))[0].cover).toBe('');
+  });
+});
+
+describe('cover set while the form is open', () => {
+  test('saving the form keeps a cover the background job just found', async () => {
+    let release;
+    const covers = {
+      findCover: vi.fn(
+        () =>
+          new Promise(
+            (resolve) => (release = () => resolve({ cover: 'https://c/bg.jpg', failed: false })),
+          ),
+      ),
+      findCovers: vi.fn(),
+    };
+    backend.setItem(BOOKS_KEY, JSON.stringify([{ id: 'a', title: 'Livro', status: 'quero' }]));
+    const app = mountApp({
+      storage: createStorage(backend),
+      search: vi.fn(),
+      covers,
+      today: () => '2024-06-01',
+    });
+    $('#nav [data-tab="quero"]').click();
+    $('.book[data-id="a"]').click();
+    await vi.waitFor(() => expect(covers.findCover).toHaveBeenCalled());
+    release();
+    await app.filler.run();
+    $('[data-rating]')?.click();
+    $('#book-form').requestSubmit();
+    expect(JSON.parse(backend.getItem(BOOKS_KEY))[0].cover).toBe('https://c/bg.jpg');
+  });
+});

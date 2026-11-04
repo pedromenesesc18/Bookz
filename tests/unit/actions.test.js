@@ -104,3 +104,25 @@ describe('view state', () => {
     expect(store.getState()).toMatchObject({ searchOpen: true, query: '' });
   });
 });
+
+describe('setCover', () => {
+  test('updates only the cover, validates the URL and persists', () => {
+    const book = makeBook({ id: 'c1', title: 'Capa' });
+    const { store, storage, notify, actions } = setup([book]);
+    actions.setCover('c1', 'http://covers.example/x.jpg');
+    expect(store.getState().books[0]).toMatchObject({
+      title: 'Capa',
+      cover: 'https://covers.example/x.jpg',
+    });
+    expect(storage.saveBooks).toHaveBeenCalled();
+    expect(notify).not.toHaveBeenCalled();
+    actions.setCover('c1', 'javascript:alert(1)');
+    expect(store.getState().books[0].cover).toBe('');
+  });
+
+  test('ignores unknown books', () => {
+    const { storage, actions } = setup([]);
+    actions.setCover('nope', 'https://x/y.jpg');
+    expect(storage.saveBooks).not.toHaveBeenCalled();
+  });
+});

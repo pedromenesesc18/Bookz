@@ -4,6 +4,7 @@ App de celular pra catalogar livros: **lidos** (por ano e mês, com nota em estr
 **lendo** (com progresso de páginas), **quero ler** e **estante** (livros físicos ainda não lidos).
 
 - Busca de livros com capa (Google Books / Open Library), inclusive por ISBN
+- Capas preenchidas automaticamente para livros sem capa, e botão **Escolher capa** para trocar
 - Funciona offline e pode ser instalado na tela inicial
 - Dados salvos no próprio aparelho, com backup em arquivo (menu ⋮)
 - Remover livro tem "Desfazer"

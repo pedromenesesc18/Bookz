@@ -1,5 +1,5 @@
 // Service worker: app shell offline, network-first so updates arrive quickly.
-const CACHE = 'bookz-v2';
+const CACHE = 'bookz-v4';
 const ASSETS = [
   './',
   './index.html',
@@ -16,16 +16,19 @@ const ASSETS = [
   './src/ui/views/read-view.js',
   './src/ui/views/tab-views.js',
   './src/ui/sheets/add-sheet.js',
+  './src/ui/sheets/cover-picker.js',
   './src/ui/sheets/edit-sheet.js',
   './src/ui/sheets/menu-sheet.js',
   './src/state/store.js',
   './src/state/actions.js',
+  './src/state/cover-filler.js',
   './src/domain/book.js',
   './src/domain/draft.js',
   './src/domain/library.js',
   './src/data/storage.js',
   './src/data/backup.js',
   './src/data/search.js',
+  './src/data/covers.js',
   './src/lib/dates.js',
   './src/lib/files.js',
   './src/lib/id.js',

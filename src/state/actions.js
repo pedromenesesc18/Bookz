@@ -1,7 +1,7 @@
 import { finalizeDraft } from '../domain/draft.js';
 import { mergeBooks, removeBook, restoreBook, upsertBook } from '../domain/library.js';
 import { parseBackup } from '../data/backup.js';
-import { STATUS } from '../domain/book.js';
+import { STATUS, normalizeBook } from '../domain/book.js';
 import { todayISO } from '../lib/dates.js';
 
 const TAB_FOR_STATUS = Object.freeze({
@@ -53,6 +53,14 @@ export const createActions = ({ store, storage, notify, today = todayISO }) => {
     });
   };
 
+  /** Background cover lookup: silent, only touches the cover field. */
+  const setCover = (id, cover) => {
+    const { books } = store.getState();
+    const book = books.find((b) => b.id === id);
+    if (!book) return;
+    setBooks(upsertBook(books, normalizeBook({ ...book, cover })));
+  };
+
   /** Throws BackupError for unreadable files. Returns how many books were added. */
   const importBackup = (text) => {
     const { list, added } = mergeBooks(store.getState().books, parseBackup(text));
@@ -60,13 +68,13 @@ export const createActions = ({ store, storage, notify, today = todayISO }) => {
     return added;
   };
 
-  return {
-    saveBook,
-    deleteBook,
-    importBackup,
-    setTab,
-    setYear: (year) => store.update({ year }),
-    setQuery: (query) => store.update({ query }),
-    toggleSearch: () => store.update((s) => ({ searchOpen: !s.searchOpen, query: '' })),
-  };
+  return { saveBook, deleteBook, setCover, importBackup, ...createViewActions(store, setTab) };
 };
+
+/** Actions that only change what is on screen (nothing is saved except the tab). */
+const createViewActions = (store, setTab) => ({
+  setTab,
+  setYear: (year) => store.update({ year }),
+  setQuery: (query) => store.update({ query }),
+  toggleSearch: () => store.update((s) => ({ searchOpen: !s.searchOpen, query: '' })),
+});

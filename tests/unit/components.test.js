@@ -7,6 +7,7 @@ import { openMenuSheet, shareOrDownload } from '../../src/ui/sheets/menu-sheet.j
 import { APP_HTML } from './fixtures.js';
 
 const $ = (s) => document.querySelector(s);
+const all = (s) => [...document.querySelectorAll(s)];
 let sheet;
 
 beforeEach(() => {
@@ -107,6 +108,7 @@ describe('edit sheet', () => {
     form.requestSubmit();
     expect(onSave).toHaveBeenCalledWith(
       expect.objectContaining({ rating: 5, status: 'lido', fisico: true }),
+      { coverChosen: false, coverCleared: false },
     );
   });
 
@@ -129,6 +131,90 @@ describe('edit sheet', () => {
     expect(readForm(form, { cover: 'https://x/c.jpg' }, { status: 'quero', rating: 0 }).cover).toBe(
       'https://x/c.jpg',
     );
+  });
+});
+
+describe('cover picker', () => {
+  const base = {
+    id: 'b1',
+    title: 'Duna',
+    author: 'Frank Herbert',
+    status: 'quero',
+    fisico: false,
+    rating: 0,
+    pages: 0,
+    currentPage: 0,
+    finishedAt: '',
+    startedAt: '',
+    notes: '',
+    cover: '',
+  };
+  const open = (findCovers, over = {}) => {
+    const onSave = vi.fn();
+    openEditSheet({
+      sheet,
+      draft: { ...base, ...over },
+      isNew: false,
+      today: '2024-06-01',
+      onSave,
+      onDelete: vi.fn(),
+      findCovers,
+    });
+    return { onSave, form: $('#book-form') };
+  };
+
+  test('searches with the current title/author and applies the chosen cover', async () => {
+    const findCovers = vi.fn(async () => ({
+      covers: ['https://c/1.jpg', 'https://c/2.jpg'],
+      failed: false,
+    }));
+    const { form, onSave } = open(findCovers);
+    form.elements.title.value = 'Duna Messias';
+    $('[data-action="pick-cover"]').click();
+    expect($('#cover-choices').textContent).toContain('Buscando capas');
+    await vi.waitFor(() => expect(all('[data-cover-choice]')).toHaveLength(3));
+    expect(findCovers).toHaveBeenCalledWith({ title: 'Duna Messias', author: 'Frank Herbert' });
+    $('[data-cover-choice="1"]').click();
+    expect($('.preview img').getAttribute('src')).toBe('https://c/2.jpg');
+    expect($('#cover-choices').innerHTML).toBe('');
+    form.requestSubmit();
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ cover: 'https://c/2.jpg' }), {
+      coverChosen: true,
+      coverCleared: false,
+    });
+  });
+
+  test('"Sem capa" removes the cover and is reported on save', async () => {
+    const findCovers = vi.fn(async () => ({ covers: ['https://c/1.jpg'], failed: false }));
+    const { form, onSave } = open(findCovers, { cover: 'https://old/c.jpg' });
+    $('[data-action="pick-cover"]').click();
+    await vi.waitFor(() => expect($('[data-cover-choice="none"]')).not.toBeNull());
+    $('[data-cover-choice="none"]').click();
+    expect($('.preview img')).toBeNull();
+    form.requestSubmit();
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ cover: '' }), {
+      coverChosen: true,
+      coverCleared: true,
+    });
+  });
+
+  test('shows friendly messages for no results and failures', async () => {
+    const findCovers = vi
+      .fn()
+      .mockResolvedValueOnce({ covers: [], failed: false })
+      .mockResolvedValueOnce({ covers: [], failed: true });
+    open(findCovers);
+    $('[data-action="pick-cover"]').click();
+    await vi.waitFor(() =>
+      expect($('#cover-choices').textContent).toContain('Nenhuma capa encontrada'),
+    );
+    $('[data-action="pick-cover"]').click();
+    await vi.waitFor(() => expect($('#cover-choices').textContent).toContain('Sem conexão'));
+  });
+
+  test('hides the button when cover search is unavailable', () => {
+    open(undefined);
+    expect($('[data-action="pick-cover"]')).toBeNull();
   });
 });
 
