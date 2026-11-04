@@ -95,7 +95,7 @@ const createOpenEdit =
     });
 
 /** Sheet flows: add (search) → edit form, backup menu. */
-const createFlows = ({ ctx, search, covers, today, now }) => {
+const createFlows = ({ ctx, search, covers, scan, today, now }) => {
   const { store, actions, sheet, toast, dom, doc } = ctx;
   const openEdit = createOpenEdit(ctx, covers, today);
 
@@ -123,6 +123,7 @@ const createFlows = ({ ctx, search, covers, today, now }) => {
       openAddSheet({
         sheet,
         search,
+        startScan: scan,
         onPick: (seed) => openEdit(newDraft(store.getState().tab, today(), seed), true),
       }),
     openMenu: () =>
@@ -175,6 +176,7 @@ export const mountApp = ({
   search,
   covers,
   colorizer,
+  scan,
   today = todayISO,
   now = () => new Date(),
 }) => {
@@ -192,7 +194,7 @@ export const mountApp = ({
     covers &&
     createCoverFiller({ store, storage, findCover: covers.findCover, setCover: actions.setCover });
   const ctx = { store, actions, sheet, toast, dom, doc, filler };
-  const flows = createFlows({ ctx, search, covers, today, now });
+  const flows = createFlows({ ctx, search, covers, scan, today, now });
 
   bindEvents(ctx, flows);
   const render = createRenderer(dom, doc, colorizer);

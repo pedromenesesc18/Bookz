@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { test, expect } from '@playwright/test';
+import { ean13Bits, fakeCameraScript } from './fake-camera.js';
 
 const LEGACY = [
   {
@@ -270,4 +271,46 @@ test('the wall wraps onto more shelves without overflowing', async ({ page }) =>
     () => document.documentElement.scrollWidth > window.innerWidth,
   );
   expect(overflow).toBe(false);
+});
+
+test('scan a book barcode with the camera (ZXing, like on iPhone)', async ({ page }) => {
+  const isbn = '9788535902778';
+  await page.addInitScript(fakeCameraScript, ean13Bits(isbn));
+  await page.route('https://www.googleapis.com/**', (route) =>
+    route.fulfill({
+      json: route.request().url().includes(`isbn%3A${isbn}`)
+        ? {
+            items: [
+              {
+                volumeInfo: {
+                  title: 'Dom Casmurro',
+                  authors: ['Machado de Assis'],
+                  pageCount: 256,
+                },
+              },
+            ],
+          }
+        : {},
+    }),
+  );
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Adicionar livro' }).click();
+  await page.getByRole('button', { name: 'Ler código de barras' }).click();
+  await expect(page.getByLabel('Título')).toHaveValue('Dom Casmurro', { timeout: 15000 });
+  await expect(page.getByLabel('Autor(a)')).toHaveValue('Machado de Assis');
+  expect(await page.evaluate(() => typeof window.ZXing)).toBe('object');
+});
+
+test('scanner explains when camera permission is denied', async ({ page }) => {
+  await page.addInitScript(() => {
+    navigator.mediaDevices.getUserMedia = async () => {
+      throw new DOMException('denied', 'NotAllowedError');
+    };
+  });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Adicionar livro' }).click();
+  await page.getByRole('button', { name: 'Ler código de barras' }).click();
+  await expect(page.getByText(/Sem permissão para usar a câmera/)).toBeVisible();
+  await page.getByRole('button', { name: 'Cancelar' }).click();
+  await expect(page.locator('#scan-panel')).toBeHidden();
 });

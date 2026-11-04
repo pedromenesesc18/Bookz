@@ -1,5 +1,5 @@
 // Service worker: app shell offline, network-first so updates arrive quickly.
-const CACHE = 'bookz-v5';
+const CACHE = 'bookz-v7';
 const ASSETS = [
   './',
   './index.html',
@@ -19,6 +19,8 @@ const ASSETS = [
   './src/ui/views/tab-views.js',
   './src/ui/sheets/add-sheet.js',
   './src/ui/sheets/cover-picker.js',
+  './src/ui/sheets/scan-panel.js',
+  './src/ui/scanner.js',
   './src/ui/sheets/edit-sheet.js',
   './src/ui/sheets/menu-sheet.js',
   './src/state/store.js',
@@ -32,8 +34,10 @@ const ASSETS = [
   './src/data/backup.js',
   './src/data/search.js',
   './src/data/covers.js',
+  './src/data/barcode.js',
   './src/lib/dates.js',
   './src/lib/files.js',
+  './src/lib/isbn.js',
   './src/lib/id.js',
   './src/lib/text.js',
   './src/styles/tokens.css',
@@ -42,6 +46,7 @@ const ASSETS = [
   './src/styles/components.css',
   './src/styles/sheet.css',
   './src/styles/shelf.css',
+  './vendor/zxing/zxing.min.js',
 ];
 
 self.addEventListener('install', (event) => {
